@@ -187,7 +187,7 @@ void protomatter_render_rgb10(std::vector<uint32_t> &result,
     // illuminate the right row for data in the shift register (the previous
     // address)
 
-    const size_t n_addr = 1u << matrixmap.n_addr_lines;
+    const size_t n_addr = matrixmap.n_addr_rows;
     const size_t pixels_across = matrixmap.pixels_across;
 
     size_t prev_addr = n_addr - 1;

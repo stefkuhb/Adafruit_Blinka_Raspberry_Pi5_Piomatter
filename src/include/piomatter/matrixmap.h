@@ -169,26 +169,35 @@ struct matrix_geometry {
 
     matrix_geometry(size_t pixels_across, size_t n_addr_lines, int n_planes,
                     int n_temporal_planes, size_t width, size_t height,
-                    matrix_map map, size_t n_lanes)
+                    matrix_map map, size_t n_lanes, size_t n_addr_rows = 0)
         : matrix_geometry(pixels_across, n_addr_lines, width, height, map,
                           n_lanes,
                           make_temporal_dither_schedule(n_planes, pixels_across,
-                                                        n_temporal_planes)) {}
+                                                        n_temporal_planes),
+                          n_addr_rows) {}
 
+    // n_addr_rows: number of row addresses actually scanned. 0 means the
+    // default of 2**n_addr_lines. Panels with a non-power-of-two scan (e.g.
+    // 1/20 scan with 5 address lines) can set this to skip nonexistent rows.
     matrix_geometry(size_t pixels_across, size_t n_addr_lines, size_t width,
                     size_t height, matrix_map map, size_t n_lanes,
-                    const schedule_sequence &schedules)
+                    const schedule_sequence &schedules, size_t n_addr_rows = 0)
         : pixels_across(pixels_across), n_addr_lines(n_addr_lines),
+          n_addr_rows(n_addr_rows ? n_addr_rows : (size_t{1} << n_addr_lines)),
           n_lanes(n_lanes), width(width), height(height),
           map(map), schedules{schedules} {
-        size_t pixels_down = n_lanes << n_addr_lines;
+        if (this->n_addr_rows > (size_t{1} << n_addr_lines)) {
+            throw std::range_error(
+                "n_addr_rows exceeds what n_addr_lines can address");
+        }
+        size_t pixels_down = n_lanes * this->n_addr_rows;
         if (map.size() != pixels_down * pixels_across) {
             throw std::range_error(
                 "map size does not match calculated pixel count");
         }
     }
 
-    size_t pixels_across, n_addr_lines, n_lanes;
+    size_t pixels_across, n_addr_lines, n_addr_rows, n_lanes;
     size_t width, height;
     matrix_map map;
     schedule_sequence schedules;

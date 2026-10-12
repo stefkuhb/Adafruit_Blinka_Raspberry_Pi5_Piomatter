@@ -198,6 +198,12 @@ For panels with more than 2 lanes, or using a custom pixel mapping, the followin
 If 2 or 3 connectors are used, then there are 4 or 6 lanes.
 
 ``map`` is a Python list of integers giving the framebuffer pixel indices for each matrix pixel.
+
+``n_addr_rows`` (custom mapping only) sets how many row addresses are scanned.
+The default, 0, means ``2 ** n_addr_lines``. Panels whose scan rate is not a power
+of two (e.g. 80x40 panels with 1/20 scan, which need 5 address lines but only
+20 row addresses) can set this to skip nonexistent rows, increasing refresh rate
+and brightness. The map must then contain ``n_lanes * n_addr_rows * pixels_across`` entries.
 )pbdoc")
         .def(py::init([](size_t width, size_t height, size_t n_addr_lines,
                          bool serpentine, piomatter::orientation rotation,
@@ -247,9 +253,19 @@ If 2 or 3 connectors are used, then there are 4 or 6 lanes.
              py::arg("n_planes") = 10u, py::arg("n_temporal_planes") = 2)
         .def(py::init([](size_t width, size_t height, size_t n_addr_lines,
                          piomatter::matrix_map map, size_t n_planes,
-                         size_t n_temporal_planes, size_t n_lanes) {
-                 size_t n_lines = n_lanes << n_addr_lines;
-                 size_t pixels_across = width * height / n_lines;
+                         size_t n_temporal_planes, size_t n_lanes,
+                         size_t n_addr_rows) {
+                 size_t rows =
+                     n_addr_rows ? n_addr_rows : (size_t{1} << n_addr_lines);
+                 size_t n_lines = n_lanes * rows;
+                 if (map.size() % n_lines != 0) {
+                     throw std::runtime_error(
+                         py::str("Map length {} must be a multiple of "
+                                 "n_lanes * n_addr_rows = {}")
+                             .attr("format")(map.size(), n_lines)
+                             .cast<std::string>());
+                 }
+                 size_t pixels_across = map.size() / n_lines;
                  for (auto el : map) {
                      if ((size_t)el >= width * height) {
                          throw std::out_of_range("Map element out of range");
@@ -257,11 +273,13 @@ If 2 or 3 connectors are used, then there are 4 or 6 lanes.
                  }
                  return piomatter::matrix_geometry(pixels_across, n_addr_lines,
                                                    n_planes, n_temporal_planes,
-                                                   width, height, map, n_lanes);
+                                                   width, height, map, n_lanes,
+                                                   n_addr_rows);
              }),
              py::arg("width"), py::arg("height"), py::arg("n_addr_lines"),
              py::arg("map"), py::arg("n_planes") = 10u,
-             py::arg("n_temporal_planes") = 0u, py::arg("n_lanes") = 2)
+             py::arg("n_temporal_planes") = 0u, py::arg("n_lanes") = 2,
+             py::arg("n_addr_rows") = 0u)
         .def_readonly("width", &piomatter::matrix_geometry::width)
         .def_readonly("height", &piomatter::matrix_geometry::height);
 

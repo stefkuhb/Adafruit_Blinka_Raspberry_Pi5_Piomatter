@@ -207,7 +207,7 @@ struct piomatter : piomatter_base {
                 // transfer pauses only occur when OE is inactive. The number
                 // of addresses per chunk must evenly divide n_addr to avoid a
                 // smaller final chunk that causes visible dark lines.
-                size_t n_addr = 1u << geometry.n_addr_lines;
+                size_t n_addr = geometry.n_addr_rows;
                 size_t addr_size = datasize / n_addr;
                 size_t addrs_per_chunk = MAX_XFER / addr_size;
                 while (addrs_per_chunk > 1 && n_addr % addrs_per_chunk != 0) {
